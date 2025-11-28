@@ -453,6 +453,5 @@ The complete source code is available on GitHub:
 
 **About the Author**
 
-[Your Name] is a software developer passionate about building high-performance applications. Connect on [LinkedIn](your-linkedin) or [Twitter](your-twitter).
-
-**Tags:** #AI #Development #NextJS #TypeScript #Performance #Supabase #Vercel #AWS
+Srinivas B H, is a student interested in full-stack development and passionate about building high-performance applications. Connect on [LinkedIn].
+#AI #Development #NextJS #TypeScript #Performance #Supabase #Vercel #AWS
