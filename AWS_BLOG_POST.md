@@ -452,6 +452,7 @@ The complete source code is available on GitHub:
 ---
 
 **About the Author**
+hey, Iam
+Srinivas B H, a student interested in full-stack development and passionate about building high-performance applications. Connect on https://www.linkedin.com/in/srinivas-bh27/ .
 
-Srinivas B H, is a student interested in full-stack development and passionate about building high-performance applications. Connect on [LinkedIn].
-#AI #Development #NextJS #TypeScript #Performance #Supabase #Vercel #AWS
+#AI #Development #NextJS #TypeScript #Performance #Supabase  #AWS
