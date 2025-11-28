@@ -1,0 +1,12 @@
+{
+  "Rules": [
+    {
+      "Id": "DeleteOldInvoices",
+      "Status": "Enabled",
+      "Prefix": "invoices/",
+      "Expiration": {
+        "Days": 2555
+      }
+    }
+  ]
+}
