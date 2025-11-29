@@ -14,12 +14,13 @@ export async function GET() {
   let dbError = null;
 
   try {
-    const { testConnection } = await import('@/lib/db');
-    const isConnected = await testConnection();
-    dbStatus = isConnected ? 'connected' : 'failed';
+    const { query } = await import('@/lib/db');
+    const result = await query('SELECT NOW() as current_time');
+    dbStatus = 'connected';
+    dbError = null;
   } catch (error) {
     dbStatus = 'error';
-    dbError = error instanceof Error ? error.message : 'Unknown error';
+    dbError = error instanceof Error ? error.message : String(error);
   }
 
   return NextResponse.json({
