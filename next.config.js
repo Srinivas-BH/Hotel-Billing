@@ -26,6 +26,34 @@ const nextConfig = {
   
   // Enable SWC minification for faster builds
   swcMinify: true,
+  
+  // Optimize for Render deployment
+  experimental: {
+    // Reduce memory usage during build
+    workerThreads: false,
+    cpus: 1,
+  },
+  
+  // Webpack configuration for better compatibility
+  webpack: (config, { isServer }) => {
+    // Optimize for production builds
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    
+    // Reduce memory usage
+    config.optimization = {
+      ...config.optimization,
+      minimize: process.env.NODE_ENV === 'production',
+    };
+    
+    return config;
+  },
 }
 
 module.exports = nextConfig

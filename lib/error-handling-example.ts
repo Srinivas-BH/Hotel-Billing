@@ -99,4 +99,4 @@ async function loginHandler(request: NextRequest): Promise<NextResponse> {
 }
 
 // Export the handler wrapped with error handling middleware
-export const POST = withErrorHandling(loginHandler);
+export const POST = withErrorHandling(loginHandler as any);

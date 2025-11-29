@@ -18,7 +18,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="mt-3 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
+            Don&apos;t have an account?{' '}
             <Link 
               href="/signup" 
               className="font-medium text-blue-600 hover:text-blue-500 transition-colors duration-200 hover:underline"
@@ -40,7 +40,7 @@ export default function LoginPage() {
                 <p className="text-xs text-blue-700">
                   Login requires database setup. Use{' '}
                   <Link href="/signup" className="font-semibold underline hover:text-blue-900">
-                    "Create Account"
+                    &quot;Create Account&quot;
                   </Link>
                   {' '}instead to test with mock data.
                 </p>

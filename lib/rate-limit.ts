@@ -92,7 +92,8 @@ export function getClientIdentifier(request: Request): string {
 export function cleanupRateLimitStore(): void {
   const now = Date.now();
   
-  for (const [key, entry] of rateLimitStore.entries()) {
+  const entries = Array.from(rateLimitStore.entries());
+  for (const [key, entry] of entries) {
     if (now > entry.resetTime) {
       rateLimitStore.delete(key);
     }

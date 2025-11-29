@@ -19,7 +19,7 @@ export default function Home() {
             Hotel Billing Admin Portal
           </h1>
           <p className="mt-4 text-lg sm:text-xl text-gray-600 max-w-2xl mx-auto">
-            Streamline your hotel's billing operations with AI-powered invoice generation
+            Streamline your hotel&apos;s billing operations with AI-powered invoice generation
           </p>
         </div>
 

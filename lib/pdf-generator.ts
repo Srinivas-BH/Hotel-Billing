@@ -40,6 +40,11 @@ async function getBrowser(): Promise<Browser> {
     if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
       launchOptions.executablePath = await puppeteer.executablePath();
     }
+    
+    // Use system Chrome on Render.com
+    if (process.env.RENDER || process.env.PUPPETEER_EXECUTABLE_PATH) {
+      launchOptions.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH || '/usr/bin/google-chrome-stable';
+    }
 
     browserInstance = await puppeteer.launch(launchOptions);
     
