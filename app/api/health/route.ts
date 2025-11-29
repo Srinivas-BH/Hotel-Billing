@@ -1,8 +1,19 @@
 import { NextResponse } from 'next/server';
-import { testConnection } from '@/lib/db';
 
 export async function GET() {
+  // Simple health check without database connection
+  // This ensures Render can verify the app is running
+  return NextResponse.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+}
+
+// Optional: Add a separate endpoint for database health check
+export async function POST() {
   try {
+    const { testConnection } = await import('@/lib/db');
     const isConnected = await testConnection();
     
     if (isConnected) {
