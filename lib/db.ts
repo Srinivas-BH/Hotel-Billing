@@ -16,11 +16,11 @@ export function getPool(): Pool {
 
     pool = new Pool({
       connectionString,
-      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+      ssl: { rejectUnauthorized: false }, // Supabase requires SSL in all environments
       max: 10, // Reduced for faster performance
       min: 2, // Keep 2 connections always ready
       idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-      connectionTimeoutMillis: 10000, // 10 seconds for Supabase
+      connectionTimeoutMillis: 20000, // Increased to 20 seconds for better reliability
       allowExitOnIdle: false, // Keep pool alive
     });
 

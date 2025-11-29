@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { ProfileForm } from '@/components/ProfileForm';
 import { useAuth } from '@/contexts/AuthContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 // Mock AuthContext
 jest.mock('@/contexts/AuthContext', () => ({
@@ -16,6 +17,11 @@ jest.mock('@/contexts/AuthContext', () => ({
 
 // Mock fetch
 global.fetch = jest.fn();
+
+// Helper to render with ToastProvider
+const renderWithToast = (component: React.ReactElement) => {
+  return render(<ToastProvider>{component}</ToastProvider>);
+};
 
 describe('ProfileForm', () => {
   const mockToken = 'test-token';
@@ -56,7 +62,7 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel name/i)).toBeInTheDocument();
@@ -84,7 +90,7 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel name/i)).toBeInTheDocument();
@@ -119,7 +125,7 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/number of tables/i)).toBeInTheDocument();
@@ -156,7 +162,7 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       const hotelNameInput = screen.getByLabelText(/hotel name/i) as HTMLInputElement;
@@ -213,7 +219,7 @@ describe('ProfileForm', () => {
         }),
       });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel name/i)).toBeInTheDocument();
@@ -274,7 +280,7 @@ describe('ProfileForm', () => {
         }),
       });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel name/i)).toBeInTheDocument();
@@ -287,7 +293,7 @@ describe('ProfileForm', () => {
     fireEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(screen.getByText(/failed to update profile/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/failed to update profile/i).length).toBeGreaterThan(0);
     });
   });
 
@@ -309,7 +315,7 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel photo/i)).toBeInTheDocument();
@@ -359,14 +365,15 @@ describe('ProfileForm', () => {
       }),
     });
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByAltText(/current hotel photo/i)).toBeInTheDocument();
     });
 
     const currentPhoto = screen.getByAltText(/current hotel photo/i) as HTMLImageElement;
-    expect(currentPhoto.src).toBe('https://example.com/photos/hotel123.jpg');
+    // Next.js Image component transforms URLs, so just check it contains the original URL
+    expect(currentPhoto.src).toContain('https%3A%2F%2Fexample.com%2Fphotos%2Fhotel123.jpg');
   });
 
   it('disables submit button while submitting', async () => {
@@ -405,7 +412,7 @@ describe('ProfileForm', () => {
         }), 100))
       );
 
-    render(<ProfileForm />);
+    renderWithToast(<ProfileForm />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/hotel name/i)).toBeInTheDocument();
@@ -423,3 +430,4 @@ describe('ProfileForm', () => {
     });
   });
 });
+

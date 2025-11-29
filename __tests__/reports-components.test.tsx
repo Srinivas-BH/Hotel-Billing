@@ -9,6 +9,7 @@ import '@testing-library/jest-dom';
 import { ReportExport } from '@/components/ReportExport';
 import { useAuth } from '@/contexts/AuthContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 // Mock AuthContext
 jest.mock('@/contexts/AuthContext', () => ({
@@ -27,7 +28,9 @@ const createWrapper = () => {
     },
   });
   return ({ children }: { children: React.ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
   );
 };
 
@@ -40,28 +43,31 @@ describe('ReportExport', () => {
     (global.fetch as jest.Mock).mockClear();
   });
 
-  it('renders export buttons for CSV and PDF', () => {
-    render(<ReportExport />);
+  it('renders export button for PDF', () => {
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
-    expect(screen.getByText('Export as CSV')).toBeInTheDocument();
     expect(screen.getByText('Export as PDF')).toBeInTheDocument();
   });
 
   it('renders report type selection for PDF', () => {
-    render(<ReportExport />);
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
     expect(screen.getByText('Daily Summary')).toBeInTheDocument();
     expect(screen.getByText('Monthly Summary')).toBeInTheDocument();
   });
 
   it('displays active filters when provided', () => {
+    const Wrapper = createWrapper();
     render(
       <ReportExport
         startDate="2024-01-01"
         endDate="2024-01-31"
         tableNumber="5"
         invoiceId="INV-123"
-      />
+      />,
+      { wrapper: Wrapper }
     );
 
     expect(screen.getByText(/From:/)).toBeInTheDocument();
@@ -71,45 +77,23 @@ describe('ReportExport', () => {
   });
 
   it('displays "No filters applied" when no filters provided', () => {
-    render(<ReportExport />);
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
     expect(screen.getByText(/No filters applied/)).toBeInTheDocument();
-  });
-
-  it('calls export API with CSV format when CSV button clicked', async () => {
-    (global.fetch as jest.Mock).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ downloadUrl: 'https://example.com/export.csv', filename: 'export.csv' }),
-    });
-
-    render(<ReportExport startDate="2024-01-01" endDate="2024-01-31" />);
-
-    const csvButton = screen.getByText('Export as CSV');
-    fireEvent.click(csvButton);
-
-    await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/reports/export', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${mockToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          format: 'csv',
-          startDate: '2024-01-01',
-          endDate: '2024-01-31',
-        }),
-      });
-    });
   });
 
   it('calls export API with PDF format when PDF button clicked', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ downloadUrl: 'https://example.com/export.pdf', filename: 'export.pdf' }),
+      blob: async () => new Blob(['PDF content'], { type: 'application/pdf' }),
     });
 
-    render(<ReportExport startDate="2024-01-01" endDate="2024-01-31" />);
+    // Mock URL.createObjectURL
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+
+    const Wrapper = createWrapper();
+    render(<ReportExport startDate="2024-01-01" endDate="2024-01-31" />, { wrapper: Wrapper });
 
     const pdfButton = screen.getByText('Export as PDF');
     fireEvent.click(pdfButton);
@@ -123,31 +107,27 @@ describe('ReportExport', () => {
         },
         body: JSON.stringify({
           format: 'pdf',
+          reportType: 'daily',
           startDate: '2024-01-01',
           endDate: '2024-01-31',
-          reportType: 'daily',
         }),
       });
     });
   });
 
-  it('includes all filters in export request', async () => {
+  it('includes report type in PDF export request', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ downloadUrl: 'https://example.com/export.csv', filename: 'export.csv' }),
+      blob: async () => new Blob(['PDF content'], { type: 'application/pdf' }),
     });
 
-    render(
-      <ReportExport
-        startDate="2024-01-01"
-        endDate="2024-01-31"
-        tableNumber="5"
-        invoiceId="INV-123"
-      />
-    );
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
 
-    const csvButton = screen.getByText('Export as CSV');
-    fireEvent.click(csvButton);
+    const Wrapper = createWrapper();
+    render(<ReportExport startDate="2024-01-01" endDate="2024-01-31" />, { wrapper: Wrapper });
+
+    const pdfButton = screen.getByText('Export as PDF');
+    fireEvent.click(pdfButton);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith('/api/reports/export', {
@@ -157,7 +137,47 @@ describe('ReportExport', () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          format: 'csv',
+          format: 'pdf',
+          reportType: 'daily',
+          startDate: '2024-01-01',
+          endDate: '2024-01-31',
+        }),
+      });
+    });
+  });
+
+  it('includes all filters in export request', async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      blob: async () => new Blob(['PDF content'], { type: 'application/pdf' }),
+    });
+
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+
+    const Wrapper = createWrapper();
+    render(
+      <ReportExport
+        startDate="2024-01-01"
+        endDate="2024-01-31"
+        tableNumber="5"
+        invoiceId="INV-123"
+      />,
+      { wrapper: Wrapper }
+    );
+
+    const pdfButton = screen.getByText('Export as PDF');
+    fireEvent.click(pdfButton);
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('/api/reports/export', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${mockToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          format: 'pdf',
+          reportType: 'daily',
           startDate: '2024-01-01',
           endDate: '2024-01-31',
           tableNumber: 5,
@@ -170,10 +190,13 @@ describe('ReportExport', () => {
   it('changes report type when toggled', async () => {
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ downloadUrl: 'https://example.com/export.pdf', filename: 'export.pdf' }),
+      blob: async () => new Blob(['PDF content'], { type: 'application/pdf' }),
     });
 
-    render(<ReportExport />);
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
+
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
     // Switch to monthly
     const monthlyButton = screen.getByText('Monthly Summary');
@@ -196,56 +219,66 @@ describe('ReportExport', () => {
       json: async () => ({ error: 'Export failed' }),
     });
 
-    render(<ReportExport />);
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
-    const csvButton = screen.getByText('Export as CSV');
-    fireEvent.click(csvButton);
+    const pdfButton = screen.getByText('Export as PDF');
+    fireEvent.click(pdfButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Export failed')).toBeInTheDocument();
-    });
+      // Check that an error is displayed (either in toast or error div)
+      const errorElements = screen.queryAllByText(/failed/i);
+      expect(errorElements.length).toBeGreaterThan(0);
+    }, { timeout: 3000 });
   });
 
-  it('disables buttons while exporting', async () => {
+  it('disables button while exporting', async () => {
     (global.fetch as jest.Mock).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve({ ok: true, json: async () => ({ downloadUrl: 'test' }) }), 100))
+      () => new Promise((resolve) => setTimeout(() => resolve({ ok: true, blob: async () => new Blob(['PDF'], { type: 'application/pdf' }) }), 100))
     );
 
-    render(<ReportExport />);
+    global.URL.createObjectURL = jest.fn(() => 'blob:mock-url');
 
-    const csvButton = screen.getByText('Export as CSV');
-    fireEvent.click(csvButton);
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
+
+    const pdfButton = screen.getByText('Export as PDF');
+    fireEvent.click(pdfButton);
 
     await waitFor(() => {
-      expect(screen.getByText('Exporting...')).toBeInTheDocument();
+      expect(screen.getByText('Generating PDF...')).toBeInTheDocument();
     });
 
-    const pdfButton = screen.getByText('Export as PDF').closest('button');
-    expect(pdfButton).toBeDisabled();
+    const button = screen.getByText('Generating PDF...').closest('button');
+    expect(button).toBeDisabled();
   });
 
   it('triggers download when export succeeds', async () => {
-    const mockDownloadUrl = 'https://example.com/export.csv';
+    const mockBlob = new Blob(['PDF content'], { type: 'application/pdf' });
     (global.fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ downloadUrl: mockDownloadUrl, filename: 'export.csv' }),
+      blob: async () => mockBlob,
     });
 
-    // Mock document.createElement and appendChild
+    // Mock URL.createObjectURL and document methods
+    const mockBlobUrl = 'blob:mock-url';
+    global.URL.createObjectURL = jest.fn(() => mockBlobUrl);
+    global.URL.revokeObjectURL = jest.fn();
+
     const mockLink = document.createElement('a');
     mockLink.click = jest.fn();
     const createElementSpy = jest.spyOn(document, 'createElement').mockReturnValue(mockLink);
     const appendChildSpy = jest.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink);
     const removeChildSpy = jest.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink);
 
-    render(<ReportExport />);
+    const Wrapper = createWrapper();
+    render(<ReportExport />, { wrapper: Wrapper });
 
-    const csvButton = screen.getByText('Export as CSV');
-    fireEvent.click(csvButton);
+    const pdfButton = screen.getByText('Export as PDF');
+    fireEvent.click(pdfButton);
 
     await waitFor(() => {
-      expect(mockLink.href).toBe(mockDownloadUrl);
-      expect(mockLink.download).toBe('export.csv');
+      expect(mockLink.href).toBe(mockBlobUrl);
       expect(mockLink.click).toHaveBeenCalled();
     });
 

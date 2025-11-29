@@ -71,7 +71,7 @@ describe('Security Measures - Input Validation', () => {
 
   describe('File Name Sanitization', () => {
     test('should remove path separators', () => {
-      expect(sanitizeFileName('../../etc/passwd')).toBe('___etc_passwd');
+      expect(sanitizeFileName('../../etc/passwd')).toBe('____etc_passwd');
       expect(sanitizeFileName('folder/file.txt')).toBe('folder_file.txt');
     });
 

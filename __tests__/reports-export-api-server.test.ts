@@ -104,104 +104,8 @@ describe('POST /api/reports/export', () => {
     mockS3Client.send.mockResolvedValue({});
   });
 
-  describe('CSV Export', () => {
-    it('should export invoices as CSV successfully', async () => {
-      mockFilterInvoices.mockResolvedValue({
-        invoices: mockInvoices,
-        total: 2,
-      });
-
-      mockGenerateInvoiceCSV.mockReturnValue('Invoice Date,Invoice ID,Table Number,Grand Total\n2024-01-15,INV-001,5,128.00');
-      mockGenerateCSVFilename.mockReturnValue('invoices_2024-01-01_to_2024-01-31_2024-01-20.csv');
-      mockGenerateFileKey.mockReturnValue('exports/123456-abc-invoices.csv');
-      mockGeneratePresignedDownloadUrl.mockResolvedValue('https://s3.example.com/download-url');
-
-      const request = new NextRequest(
-        'http://localhost:3000/api/reports/export',
-        {
-          method: 'POST',
-          headers: {
-            authorization: 'Bearer test-token',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            format: 'csv',
-            startDate: '2024-01-01',
-            endDate: '2024-01-31',
-          }),
-        }
-      );
-
-      const response = await exportReport(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.downloadUrl).toBe('https://s3.example.com/download-url');
-      expect(data.format).toBe('csv');
-      expect(data.recordCount).toBe(2);
-      expect(data.filename).toBe('invoices_2024-01-01_to_2024-01-31_2024-01-20.csv');
-
-      expect(mockFilterInvoices).toHaveBeenCalledWith('test-user-id', {
-        startDate: '2024-01-01',
-        endDate: '2024-01-31',
-        tableNumber: undefined,
-        invoiceId: undefined,
-        page: 1,
-        limit: 10000,
-      });
-
-      expect(mockGenerateInvoiceCSV).toHaveBeenCalledWith(mockInvoices);
-      expect(mockS3Client.send).toHaveBeenCalled();
-      expect(mockGeneratePresignedDownloadUrl).toHaveBeenCalledWith(
-        'test-invoices-bucket',
-        'exports/123456-abc-invoices.csv'
-      );
-    });
-
-    it('should export CSV with table number filter', async () => {
-      mockFilterInvoices.mockResolvedValue({
-        invoices: [mockInvoices[0]],
-        total: 1,
-      });
-
-      mockGenerateInvoiceCSV.mockReturnValue('Invoice Date,Invoice ID,Table Number,Grand Total\n2024-01-15,INV-001,5,128.00');
-      mockGenerateCSVFilename.mockReturnValue('invoices_export_2024-01-20.csv');
-      mockGenerateFileKey.mockReturnValue('exports/123456-abc-invoices.csv');
-      mockGeneratePresignedDownloadUrl.mockResolvedValue('https://s3.example.com/download-url');
-
-      const request = new NextRequest(
-        'http://localhost:3000/api/reports/export',
-        {
-          method: 'POST',
-          headers: {
-            authorization: 'Bearer test-token',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            format: 'csv',
-            tableNumber: 5,
-          }),
-        }
-      );
-
-      const response = await exportReport(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(200);
-      expect(data.recordCount).toBe(1);
-      expect(mockFilterInvoices).toHaveBeenCalledWith('test-user-id', {
-        startDate: undefined,
-        endDate: undefined,
-        tableNumber: 5,
-        invoiceId: undefined,
-        page: 1,
-        limit: 10000,
-      });
-    });
-  });
-
   describe('PDF Export', () => {
-    it('should export daily report as PDF successfully', async () => {
+    it('should export report as PDF successfully', async () => {
       mockFilterInvoices.mockResolvedValue({
         invoices: mockInvoices,
         total: 2,
@@ -214,9 +118,6 @@ describe('POST /api/reports/export', () => {
 
       mockGenerateReportHTML.mockReturnValue('<html>Report HTML</html>');
       mockGenerateReportPDF.mockResolvedValue(Buffer.from('PDF content'));
-      mockGenerateReportFilename.mockReturnValue('daily_report_2024-01-01_to_2024-01-31_2024-01-20.pdf');
-      mockGenerateFileKey.mockReturnValue('exports/123456-abc-report.pdf');
-      mockGeneratePresignedDownloadUrl.mockResolvedValue('https://s3.example.com/download-url');
 
       const request = new NextRequest(
         'http://localhost:3000/api/reports/export',
@@ -236,35 +137,71 @@ describe('POST /api/reports/export', () => {
       );
 
       const response = await exportReport(request);
-      const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.downloadUrl).toBe('https://s3.example.com/download-url');
-      expect(data.format).toBe('pdf');
-      expect(data.recordCount).toBe(2);
-      expect(data.totalRevenue).toBe(374); // 128 + 246
+      expect(response.headers.get('Content-Type')).toBe('application/pdf');
+      expect(response.headers.get('Content-Disposition')).toContain('attachment');
+
+      expect(mockFilterInvoices).toHaveBeenCalledWith('test-user-id', {
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        tableNumber: undefined,
+        invoiceId: undefined,
+        page: 1,
+        limit: 10000,
+      });
 
       expect(mockCalculateDailyRevenueRange).toHaveBeenCalledWith(
         'test-user-id',
         '2024-01-01',
         '2024-01-31'
       );
-
-      expect(mockGenerateReportHTML).toHaveBeenCalledWith(
-        expect.objectContaining({
-          hotelName: 'Test Hotel',
-          reportType: 'daily',
-          startDate: '2024-01-01',
-          endDate: '2024-01-31',
-          totalRevenue: 374,
-          totalInvoices: 2,
-        })
-      );
-
-      expect(mockGenerateReportPDF).toHaveBeenCalledWith('<html>Report HTML</html>');
-      expect(mockS3Client.send).toHaveBeenCalled();
     });
 
+    it('should export PDF with table number filter', async () => {
+      mockFilterInvoices.mockResolvedValue({
+        invoices: [mockInvoices[0]],
+        total: 1,
+      });
+
+      mockCalculateDailyRevenueRange.mockResolvedValue([
+        { date: '2024-01-15', invoiceCount: 1, totalRevenue: 128 },
+      ]);
+
+      mockGenerateReportHTML.mockReturnValue('<html>Report HTML</html>');
+      mockGenerateReportPDF.mockResolvedValue(Buffer.from('PDF content'));
+
+      const request = new NextRequest(
+        'http://localhost:3000/api/reports/export',
+        {
+          method: 'POST',
+          headers: {
+            authorization: 'Bearer test-token',
+            'content-type': 'application/json',
+          },
+          body: JSON.stringify({
+            format: 'pdf',
+            reportType: 'daily',
+            tableNumber: 5,
+          }),
+        }
+      );
+
+      const response = await exportReport(request);
+
+      expect(response.status).toBe(200);
+      expect(mockFilterInvoices).toHaveBeenCalledWith('test-user-id', {
+        startDate: undefined,
+        endDate: undefined,
+        tableNumber: 5,
+        invoiceId: undefined,
+        page: 1,
+        limit: 10000,
+      });
+    });
+  });
+
+  describe('Monthly PDF Export', () => {
     it('should export monthly report as PDF successfully', async () => {
       mockFilterInvoices.mockResolvedValue({
         invoices: mockInvoices,
@@ -277,9 +214,6 @@ describe('POST /api/reports/export', () => {
 
       mockGenerateReportHTML.mockReturnValue('<html>Report HTML</html>');
       mockGenerateReportPDF.mockResolvedValue(Buffer.from('PDF content'));
-      mockGenerateReportFilename.mockReturnValue('monthly_report_2024-01-01_to_2024-01-31_2024-01-20.pdf');
-      mockGenerateFileKey.mockReturnValue('exports/123456-abc-report.pdf');
-      mockGeneratePresignedDownloadUrl.mockResolvedValue('https://s3.example.com/download-url');
 
       const request = new NextRequest(
         'http://localhost:3000/api/reports/export',
@@ -299,10 +233,9 @@ describe('POST /api/reports/export', () => {
       );
 
       const response = await exportReport(request);
-      const data = await response.json();
 
       expect(response.status).toBe(200);
-      expect(data.format).toBe('pdf');
+      expect(response.headers.get('Content-Type')).toBe('application/pdf');
       expect(mockCalculateMonthlyRevenueRange).toHaveBeenCalledWith(
         'test-user-id',
         '2024-01-01',
@@ -323,7 +256,8 @@ describe('POST /api/reports/export', () => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            format: 'csv',
+            format: 'pdf',
+            reportType: 'daily',
           }),
         }
       );
@@ -367,7 +301,8 @@ describe('POST /api/reports/export', () => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            format: 'csv',
+            format: 'pdf',
+            reportType: 'daily',
             startDate: 'invalid-date',
           }),
         }
@@ -390,7 +325,8 @@ describe('POST /api/reports/export', () => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            format: 'csv',
+            format: 'pdf',
+            reportType: 'daily',
             startDate: '2024-01-31',
             endDate: '2024-01-01',
           }),
@@ -422,7 +358,8 @@ describe('POST /api/reports/export', () => {
             'content-type': 'application/json',
           },
           body: JSON.stringify({
-            format: 'csv',
+            format: 'pdf',
+            reportType: 'daily',
           }),
         }
       );
@@ -436,38 +373,6 @@ describe('POST /api/reports/export', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle S3 upload errors gracefully', async () => {
-      mockFilterInvoices.mockResolvedValue({
-        invoices: mockInvoices,
-        total: 2,
-      });
-
-      mockGenerateInvoiceCSV.mockReturnValue('CSV content');
-      mockGenerateCSVFilename.mockReturnValue('invoices.csv');
-      mockGenerateFileKey.mockReturnValue('exports/invoices.csv');
-      mockS3Client.send.mockRejectedValue(new Error('S3 upload failed'));
-
-      const request = new NextRequest(
-        'http://localhost:3000/api/reports/export',
-        {
-          method: 'POST',
-          headers: {
-            authorization: 'Bearer test-token',
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({
-            format: 'csv',
-          }),
-        }
-      );
-
-      const response = await exportReport(request);
-      const data = await response.json();
-
-      expect(response.status).toBe(500);
-      expect(data.error).toBe('Export failed');
-      expect(data.message).toContain('S3 upload failed');
-    });
 
     it('should handle PDF generation errors gracefully', async () => {
       mockFilterInvoices.mockResolvedValue({

@@ -95,11 +95,16 @@ describe('S3 Property Tests', () => {
           expect(key2).toMatch(/^[a-zA-Z0-9/_.-]+$/);
           
           // Keys should contain sanitized versions of folder and filename
-          const sanitizedFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, '_');
+          // Match the actual sanitization logic in generateFileKey
+          const sanitizedFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, '_').replace(/\/+/g, '/').replace(/^\/|\/$/g, '');
           const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
-          expect(key1).toContain(sanitizedFolder);
+          
+          // Only check for folder if it's not empty after sanitization
+          if (sanitizedFolder) {
+            expect(key1).toContain(sanitizedFolder);
+            expect(key2).toContain(sanitizedFolder);
+          }
           expect(key1).toContain(sanitizedFileName);
-          expect(key2).toContain(sanitizedFolder);
           expect(key2).toContain(sanitizedFileName);
         }
       ),

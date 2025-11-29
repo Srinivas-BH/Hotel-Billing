@@ -1,398 +1,455 @@
-# Deployment Guide - GitHub & Vercel
+# 🚀 AWS Deployment Guide - Hotel Billing Management System
 
-## 🚀 Deploy Your Application
+Complete guide to deploy your Hotel Billing Management System on AWS using AWS Amplify.
 
-Your code is already on GitHub. Now let's deploy it so it's live on the internet!
+## 📋 Table of Contents
 
-**GitHub Repository:** https://github.com/Srinivas-BH/Hotel-Billing.git
+1. [Prerequisites](#prerequisites)
+2. [AWS Account Setup](#aws-account-setup)
+3. [Database Setup (Supabase)](#database-setup)
+4. [AWS S3 Configuration](#aws-s3-configuration)
+5. [AWS Amplify Deployment](#aws-amplify-deployment)
+6. [Environment Variables](#environment-variables)
+7. [Custom Domain Setup](#custom-domain-setup)
+8. [Monitoring & Logs](#monitoring--logs)
+9. [Troubleshooting](#troubleshooting)
 
----
+## ✅ Prerequisites
 
-## Option 1: Deploy to Vercel (Recommended) ⭐
+Before starting, ensure you have:
 
-Vercel is the best platform for Next.js applications. It's free and takes 5 minutes!
+- ✅ AWS Account (free tier eligible)
+- ✅ GitHub account with your code pushed
+- ✅ Supabase account (or PostgreSQL database)
+- ✅ Domain name (optional, for custom domain)
+- ✅ Credit card for AWS verification (won't be charged on free tier)
 
-### Step 1: Create Vercel Account
+## 🔐 AWS Account Setup
 
-1. Go to https://vercel.com
-2. Click "Sign Up"
-3. Choose "Continue with GitHub"
-4. Authorize Vercel to access your GitHub
+### Step 1: Create AWS Account
 
-### Step 2: Import Your Repository
+1. Go to [AWS Console](https://aws.amazon.com/)
+2. Click "Create an AWS Account"
+3. Fill in your details:
+   - Email address
+   - Password
+   - AWS account name
+4. Choose "Personal" account type
+5. Enter payment information (required for verification)
+6. Verify your phone number
+7. Select "Free" support plan
 
-1. Click "Add New..." → "Project"
-2. Find "Hotel-Billing" in your repositories
-3. Click "Import"
+### Step 2: Enable Required Services
 
-### Step 3: Configure Project
+1. **AWS Amplify** - For hosting the application
+2. **AWS S3** - For file storage (invoices, photos)
+3. **AWS IAM** - For access management
 
-**Framework Preset:** Next.js (auto-detected)
+## 🗄️ Database Setup
 
-**Build Command:** `npm run build`
+### Option 1: Supabase (Recommended)
 
-**Output Directory:** `.next`
+1. **Create Supabase Project**
+   - Go to [Supabase](https://supabase.com/)
+   - Click "New Project"
+   - Choose organization
+   - Enter project details:
+     - Name: `hotel-billing-db`
+     - Database Password: (save this!)
+     - Region: Choose closest to your users
+   - Click "Create new project"
 
-**Install Command:** `npm install`
+2. **Run Database Schema**
+   - Go to SQL Editor in Supabase
+   - Copy content from `database-schema.sql`
+   - Paste and click "Run"
+   - Verify tables are created
 
-### Step 4: Add Environment Variables
+3. **Get Connection String**
+   - Go to Project Settings → Database
+   - Copy the connection string
+   - Format: `postgresql://postgres:[YOUR-PASSWORD]@[HOST]:5432/postgres`
+   - **Important**: URL-encode special characters in password
+     - `$` becomes `%24`
+     - `@` becomes `%40`
+     - `#` becomes `%23`
 
-Click "Environment Variables" and add:
+### Option 2: AWS RDS PostgreSQL
 
+1. Go to AWS RDS Console
+2. Click "Create database"
+3. Choose PostgreSQL
+4. Select "Free tier" template
+5. Configure:
+   - DB instance identifier: `hotel-billing-db`
+   - Master username: `postgres`
+   - Master password: (save this!)
+6. Enable public access
+7. Create database
+8. Run schema from `database-schema.sql`
+
+## 📦 AWS S3 Configuration
+
+### Step 1: Create S3 Buckets
+
+1. **Go to S3 Console**
+   - Navigate to [S3 Console](https://s3.console.aws.amazon.com/)
+
+2. **Create Photos Bucket**
+   - Click "Create bucket"
+   - Bucket name: `hotel-billing-photos-[your-unique-id]`
+   - Region: Same as your Amplify app
+   - Block all public access: ✅ (keep checked)
+   - Enable versioning: Optional
+   - Click "Create bucket"
+
+3. **Create Invoices Bucket**
+   - Click "Create bucket"
+   - Bucket name: `hotel-billing-invoices-[your-unique-id]`
+   - Region: Same as your Amplify app
+   - Block all public access: ✅ (keep checked)
+   - Click "Create bucket"
+
+### Step 2: Configure CORS
+
+For each bucket:
+
+1. Go to bucket → Permissions → CORS
+2. Add this configuration:
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "PUT", "POST", "DELETE"],
+    "AllowedOrigins": ["*"],
+    "ExposeHeaders": ["ETag"]
+  }
+]
 ```
-DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.qbjtuqgvlvcvqrxkmsbw.supabase.co:5432/postgres
-JWT_SECRET=your-production-secret-key
-JWT_EXPIRES_IN=24h
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-NODE_ENV=production
-```
 
-**Important:** 
-- Replace `YOUR_PASSWORD` with your Supabase password
-- Generate a new `JWT_SECRET` for production (use: `openssl rand -base64 32`)
-- Update `NEXT_PUBLIC_APP_URL` after deployment
+### Step 3: Create IAM User for S3 Access
 
-### Step 5: Deploy!
+1. **Go to IAM Console**
+   - Navigate to [IAM Console](https://console.aws.amazon.com/iam/)
 
-1. Click "Deploy"
-2. Wait 2-3 minutes
-3. Your app will be live!
+2. **Create User**
+   - Click "Users" → "Add users"
+   - User name: `hotel-billing-s3-user`
+   - Access type: ✅ Programmatic access
+   - Click "Next: Permissions"
 
-### Step 6: Get Your URL
+3. **Attach Policies**
+   - Click "Attach existing policies directly"
+   - Search and select: `AmazonS3FullAccess`
+   - Click "Next" → "Create user"
 
-After deployment, you'll get a URL like:
-```
-https://hotel-billing-xyz.vercel.app
-```
+4. **Save Credentials**
+   - **Access Key ID**: Save this!
+   - **Secret Access Key**: Save this! (won't be shown again)
 
-### Step 7: Update Environment Variable
+## 🌐 AWS Amplify Deployment
 
-1. Go to Project Settings → Environment Variables
-2. Update `NEXT_PUBLIC_APP_URL` with your actual Vercel URL
-3. Redeploy (Deployments → ... → Redeploy)
-
----
-
-## Option 2: Deploy with Vercel CLI
-
-If you prefer command line:
-
-### Step 1: Install Vercel CLI
+### Step 1: Push Code to GitHub
 
 ```bash
-npm i -g vercel
+# Initialize git (if not already done)
+git init
+
+# Add all files
+git add .
+
+# Commit
+git commit -m "Initial commit - Hotel Billing System"
+
+# Add remote (replace with your repo URL)
+git remote add origin https://github.com/yourusername/hotel-billing-admin.git
+
+# Push to GitHub
+git push -u origin main
 ```
 
-### Step 2: Login
+### Step 2: Connect to AWS Amplify
 
-```bash
-vercel login
-```
+1. **Go to AWS Amplify Console**
+   - Navigate to [AWS Amplify](https://console.aws.amazon.com/amplify/)
+   - Click "Get Started" under "Amplify Hosting"
 
-### Step 3: Deploy
+2. **Connect Repository**
+   - Choose "GitHub"
+   - Click "Continue"
+   - Authorize AWS Amplify to access GitHub
+   - Select your repository
+   - Select branch: `main`
+   - Click "Next"
 
-```bash
-vercel
-```
-
-Follow the prompts:
-- Set up and deploy? **Y**
-- Which scope? **Your account**
-- Link to existing project? **N**
-- What's your project's name? **hotel-billing**
-- In which directory is your code located? **./**
-- Want to override settings? **N**
-
-### Step 4: Add Environment Variables
-
-```bash
-vercel env add DATABASE_URL
-# Paste your Supabase connection string
-
-vercel env add JWT_SECRET
-# Paste your JWT secret
-
-vercel env add JWT_EXPIRES_IN
-# Enter: 24h
-
-vercel env add NEXT_PUBLIC_APP_URL
-# Enter your Vercel URL
-
-vercel env add NODE_ENV
-# Enter: production
-```
-
-### Step 5: Deploy to Production
-
-```bash
-vercel --prod
-```
-
----
-
-## Option 3: GitHub Actions (Automatic Deployment)
-
-Set up automatic deployment on every push:
-
-### Step 1: Create GitHub Action
-
-Create `.github/workflows/deploy.yml`:
+3. **Configure Build Settings**
+   - App name: `hotel-billing-admin`
+   - Environment: `production`
+   - Build settings will be auto-detected
+   - Edit `amplify.yml` if needed:
 
 ```yaml
-name: Deploy to Vercel
-
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '18'
-      
-      - name: Install dependencies
-        run: npm install
-      
-      - name: Run tests
-        run: npm test
-      
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*
 ```
 
-### Step 2: Add Secrets to GitHub
+4. **Advanced Settings**
+   - Click "Advanced settings"
+   - Add environment variables (see next section)
 
-1. Go to your GitHub repository
-2. Settings → Secrets and variables → Actions
-3. Add these secrets:
-   - `VERCEL_TOKEN` - Get from Vercel Account Settings → Tokens
-   - `VERCEL_ORG_ID` - Get from Vercel project settings
-   - `VERCEL_PROJECT_ID` - Get from Vercel project settings
+### Step 3: Add Environment Variables
 
----
+In Amplify Console → Environment variables, add:
 
-## Post-Deployment Checklist
+```env
+# Database
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@YOUR_HOST:5432/postgres
 
-### ✅ Verify Deployment
+# JWT Authentication
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars
+JWT_EXPIRES_IN=24h
 
-1. **Visit your URL**
-   - Check if site loads
-   - Test all pages
+# Application
+NEXT_PUBLIC_APP_URL=https://your-app.amplifyapp.com
+NODE_ENV=production
 
-2. **Test Features**
-   - Sign up / Login
-   - Add menu items
-   - Generate invoice
-   - View reports
-   - Export PDF
+# AWS S3
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your-access-key-id
+AWS_SECRET_ACCESS_KEY=your-secret-access-key
+S3_BUCKET_PHOTOS=hotel-billing-photos-your-id
+S3_BUCKET_INVOICES=hotel-billing-invoices-your-id
 
-3. **Check Performance**
-   - Open DevTools → Network
-   - Generate invoice
-   - Should be < 2 seconds
+# Hugging Face AI (Optional)
+HUGGINGFACE_API_KEY=your-huggingface-api-key
+HUGGINGFACE_MODEL=facebook/bart-large-cnn
+```
 
-4. **Test Mobile**
-   - Open on phone
-   - Test all features
-   - Check responsiveness
+**Important Notes:**
+- URL-encode special characters in DATABASE_URL
+- Generate a strong JWT_SECRET (32+ characters)
+- Use your actual S3 bucket names
+- NEXT_PUBLIC_APP_URL will be provided after first deployment
 
-### ✅ Update Documentation
+### Step 4: Deploy
 
-1. **Update README.md**
-   ```markdown
-   ## Live Demo
-   https://your-app.vercel.app
+1. Click "Save and deploy"
+2. Wait for deployment (5-10 minutes)
+3. Monitor the build logs
+4. Once complete, you'll get a URL like: `https://main.d1234567890.amplifyapp.com`
+
+### Step 5: Update Environment Variables
+
+1. Copy your Amplify app URL
+2. Go back to Environment variables
+3. Update `NEXT_PUBLIC_APP_URL` with your actual URL
+4. Save and redeploy
+
+## 🌍 Custom Domain Setup
+
+### Step 1: Add Custom Domain
+
+1. In Amplify Console, go to "Domain management"
+2. Click "Add domain"
+3. Enter your domain: `yourdomain.com`
+4. Click "Configure domain"
+
+### Step 2: Configure DNS
+
+1. Amplify will provide DNS records
+2. Go to your domain registrar (GoDaddy, Namecheap, etc.)
+3. Add the provided CNAME records:
+   ```
+   Type: CNAME
+   Name: www
+   Value: [provided by Amplify]
    ```
 
-2. **Update AWS_BLOG_POST.md**
-   - Add live demo URL
-   - Add production screenshots
+4. Wait for DNS propagation (5-30 minutes)
+5. SSL certificate will be automatically provisioned
 
-3. **Push changes**
-   ```bash
-   git add .
-   git commit -m "Add live demo URL"
-   git push
-   ```
+### Step 3: Verify
 
----
+1. Visit `https://yourdomain.com`
+2. Verify SSL certificate is active (🔒 in browser)
+3. Test all functionality
 
-## Troubleshooting
+## 📊 Monitoring & Logs
+
+### View Build Logs
+
+1. Go to Amplify Console
+2. Click on your app
+3. Select a deployment
+4. View build logs for debugging
+
+### View Application Logs
+
+1. In Amplify Console, go to "Monitoring"
+2. View:
+   - Request count
+   - Error rate
+   - Response time
+   - Data transfer
+
+### Set Up Alarms
+
+1. Go to CloudWatch
+2. Create alarms for:
+   - High error rate
+   - Slow response time
+   - High data transfer
+
+## 🔧 Troubleshooting
 
 ### Build Fails
 
-**Error:** "Module not found"
-**Solution:** 
+**Issue**: Build fails with "Module not found"
 ```bash
-npm install
-git add package-lock.json
-git commit -m "Update dependencies"
-git push
+# Solution: Clear cache and rebuild
+# In Amplify Console:
+# 1. Go to Build settings
+# 2. Clear cache
+# 3. Redeploy
+```
+
+**Issue**: Environment variables not working
+```bash
+# Solution: Verify variables are set correctly
+# 1. Check for typos
+# 2. Ensure no trailing spaces
+# 3. URL-encode special characters
+# 4. Redeploy after changes
 ```
 
 ### Database Connection Fails
 
-**Error:** "Connection timeout"
-**Solution:** 
-- Check `DATABASE_URL` in Vercel environment variables
-- Ensure Supabase allows connections from Vercel IPs
-- Test connection string locally first
+**Issue**: "password authentication failed"
+```bash
+# Solution: Check DATABASE_URL encoding
+# Special characters must be URL-encoded:
+# $ → %24
+# @ → %40
+# # → %23
+# Example:
+# Wrong: postgresql://postgres:Pass$123@host:5432/db
+# Right: postgresql://postgres:Pass%24123@host:5432/db
+```
 
-### Environment Variables Not Working
+**Issue**: "Connection timeout"
+```bash
+# Solution: Check Supabase/RDS settings
+# 1. Verify database is running
+# 2. Check firewall rules
+# 3. Ensure public access is enabled
+# 4. Verify connection string is correct
+```
 
-**Solution:**
-1. Go to Vercel Project Settings
-2. Environment Variables
-3. Verify all variables are set
-4. Redeploy
+### S3 Upload Fails
 
-### 500 Internal Server Error
+**Issue**: "Access Denied" when uploading
+```bash
+# Solution: Check IAM permissions
+# 1. Verify AWS credentials are correct
+# 2. Check bucket policy
+# 3. Verify CORS configuration
+# 4. Ensure bucket names match environment variables
+```
 
-**Solution:**
-1. Check Vercel logs (Deployments → View Function Logs)
-2. Look for error messages
-3. Fix the issue
-4. Redeploy
+### Application Errors
 
----
+**Issue**: 500 Internal Server Error
+```bash
+# Solution: Check application logs
+# 1. Go to Amplify Console → Monitoring
+# 2. Check CloudWatch logs
+# 3. Look for error stack traces
+# 4. Fix code and redeploy
+```
 
-## Performance Optimization
+## 🎯 Post-Deployment Checklist
 
-### Enable Caching
+- [ ] Application loads successfully
+- [ ] Can create new account (signup)
+- [ ] Can login with credentials
+- [ ] Can add menu items
+- [ ] Can generate invoices
+- [ ] PDF download works
+- [ ] Reports page loads
+- [ ] Profile update works
+- [ ] Mobile responsive design works
+- [ ] HTTPS is enabled
+- [ ] Custom domain works (if configured)
+- [ ] All environment variables are set
+- [ ] Database connection is stable
+- [ ] S3 uploads work (if configured)
 
-Vercel automatically caches:
-- Static assets
-- API responses (with headers)
-- Page renders
+## 💰 Cost Estimation
 
-### Add Custom Domain (Optional)
+### AWS Free Tier (First 12 Months)
 
-1. Go to Vercel Project Settings
-2. Domains
-3. Add your domain
-4. Update DNS records
-5. Wait for SSL certificate
+- **Amplify**: 1000 build minutes/month, 15 GB storage, 15 GB data transfer
+- **S3**: 5 GB storage, 20,000 GET requests, 2,000 PUT requests
+- **RDS** (if used): 750 hours/month of db.t2.micro
 
----
+### After Free Tier
 
-## Monitoring
+- **Amplify**: ~$0.01 per build minute, ~$0.15/GB storage
+- **S3**: ~$0.023/GB storage, ~$0.005 per 1000 requests
+- **Supabase**: Free tier available, Pro starts at $25/month
 
-### Vercel Analytics
+**Estimated Monthly Cost**: $0-10 for small to medium usage
 
-1. Go to your project on Vercel
-2. Analytics tab
-3. View:
-   - Page views
-   - Performance metrics
-   - Error rates
+## 🔄 Continuous Deployment
 
-### Set Up Alerts
+Once set up, every push to your GitHub repository will:
 
-1. Project Settings → Notifications
-2. Add email for:
-   - Deployment failures
-   - Performance issues
-   - Error spikes
-
----
-
-## Cost
-
-### Vercel Free Tier Includes:
-
-✅ Unlimited deployments  
-✅ 100GB bandwidth/month  
-✅ Automatic HTTPS  
-✅ Global CDN  
-✅ Serverless functions  
-✅ Analytics  
-
-**Perfect for this project!**
-
----
-
-## Quick Commands Reference
+1. Trigger automatic build
+2. Run tests
+3. Deploy to production
+4. Update your live site
 
 ```bash
-# Deploy to Vercel
-vercel
+# Make changes
+git add .
+git commit -m "Update feature"
+git push origin main
 
-# Deploy to production
-vercel --prod
-
-# View logs
-vercel logs
-
-# List deployments
-vercel ls
-
-# Remove deployment
-vercel rm [deployment-url]
-
-# Add environment variable
-vercel env add [NAME]
-
-# Pull environment variables
-vercel env pull
+# Amplify automatically deploys!
 ```
 
----
+## 📞 Support
 
-## Success Checklist
+- **AWS Support**: [AWS Support Center](https://console.aws.amazon.com/support/)
+- **Amplify Docs**: [AWS Amplify Documentation](https://docs.amplify.aws/)
+- **Supabase Docs**: [Supabase Documentation](https://supabase.com/docs)
 
-- [ ] Vercel account created
-- [ ] Repository imported to Vercel
-- [ ] Environment variables configured
-- [ ] Application deployed
-- [ ] Live URL obtained
-- [ ] All features tested
-- [ ] Performance verified
-- [ ] Documentation updated
-- [ ] Blog post updated with live URL
+## 🎉 Success!
 
----
+Your Hotel Billing Management System is now live on AWS! 🚀
 
-## 🎉 You're Live!
-
-Once deployed, your application will be accessible at:
-
-```
-https://hotel-billing-[your-id].vercel.app
-```
-
-Share it with the world! 🚀
+**Next Steps:**
+1. Share your app URL with users
+2. Monitor performance and errors
+3. Gather user feedback
+4. Iterate and improve
 
 ---
 
-## Next Steps
-
-1. **Test thoroughly** on production
-2. **Update blog post** with live URL
-3. **Take screenshots** of live site
-4. **Submit to AWS Builder Center**
-5. **Promote on social media**
-
----
-
-**Need Help?**
-
-- Vercel Docs: https://vercel.com/docs
-- Vercel Support: https://vercel.com/support
-- GitHub Issues: https://github.com/Srinivas-BH/Hotel-Billing/issues
-
----
-
-**Last Updated:** November 28, 2025  
-**Status:** Ready to Deploy  
-**Platform:** Vercel (Recommended)
+**Need Help?** Open an issue on GitHub or contact support.
