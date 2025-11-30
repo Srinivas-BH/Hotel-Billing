@@ -4,41 +4,44 @@ export async function GET() {
   try {
     const { query } = await import('@/lib/db');
     
-    // Check if hotels table exists
+    // Check all required tables
+    const tablesToCheck = ['hotels', 'menu_items', 'invoices', 'invoice_items', 'orders', 'audit_logs'];
+    
     const tableCheck = await query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'hotels'
-      );
-    `);
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public' 
+      AND table_name = ANY($1::text[])
+      ORDER BY table_name;
+    `, [tablesToCheck]);
     
-    const hotelsTableExists = tableCheck.rows[0].exists;
+    const existingTables = tableCheck.rows.map((row: any) => row.table_name);
+    const missingTables = tablesToCheck.filter(table => !existingTables.includes(table));
     
-    // If table exists, check its structure
-    let tableStructure = null;
-    if (hotelsTableExists) {
-      const structureCheck = await query(`
-        SELECT column_name, data_type 
-        FROM information_schema.columns 
-        WHERE table_name = 'hotels'
-        ORDER BY ordinal_position;
-      `);
-      tableStructure = structureCheck.rows;
-    }
+    // Check database connection
+    const connectionTest = await query('SELECT NOW() as current_time, version() as pg_version');
     
     return NextResponse.json({
       databaseConnected: true,
-      hotelsTableExists,
-      tableStructure,
-      message: hotelsTableExists 
-        ? 'Database is ready!' 
-        : 'Database connected but tables need to be created',
+      currentTime: connectionTest.rows[0].current_time,
+      pgVersion: connectionTest.rows[0].pg_version?.substring(0, 50),
+      tables: {
+        existing: existingTables,
+        missing: missingTables,
+        allExist: missingTables.length === 0
+      },
+      message: missingTables.length === 0
+        ? 'Database is fully configured!' 
+        : `Missing tables: ${missingTables.join(', ')}. Run migrations with: npm run migrate`,
     });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json({
       databaseConnected: false,
       error: error instanceof Error ? error.message : String(error),
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      message: error.message?.includes('DATABASE_URL') 
+        ? 'DATABASE_URL not configured. Please set it in .env.local'
+        : 'Database connection failed. Check your DATABASE_URL configuration.',
     }, { status: 500 });
   }
 }

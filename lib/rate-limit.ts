@@ -12,7 +12,7 @@ const rateLimitStore = new Map<string, RateLimitEntry>();
 
 // Rate limit configuration
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-const RATE_LIMIT_MAX_REQUESTS = 100; // 100 requests per window
+const RATE_LIMIT_MAX_REQUESTS = process.env.NODE_ENV === 'development' ? 1000 : 100; // Higher limit in development
 
 /**
  * Check if a request should be rate limited

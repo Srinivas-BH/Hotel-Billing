@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
-    "migrate": "ts-node lib/migrate.ts",
+    "migrate": "node scripts/run-migrations.js",
+    "migrate:rollback": "node scripts/run-migrations.js --rollback",
     "check-render": "node check-render-ready.js"
   },
   "dependencies": {

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dashboard API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #0070f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #0051cc;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Dashboard API Test</h1>
+    
+    <div class="section">
+        <h2>Step 1: Check Token</h2>
+        <button onclick="checkToken()">Check Token</button>
+        <div id="tokenResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Test Orders API</h2>
+        <button onclick="testOrdersAPI()">Test /api/orders</button>
+        <div id="apiResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Check Database</h2>
+        <p>Orders in database (from earlier check):</p>
+        <pre>
+Table 1 - OPEN
+Table 2 - OPEN
+Table 4 - OPEN
+        </pre>
+    </div>
+
+    <script>
+        function checkToken() {
+            const token = localStorage.getItem('token');
+            const resultDiv = document.getElementById('tokenResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<p class="error">❌ No token found! Please login first.</p>';
+                return;
+            }
+
+            // Decode JWT (simple base64 decode, not verification)
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                resultDiv.innerHTML = `
+                    <p class="success">✅ Token found!</p>
+                    <pre>${JSON.stringify(payload, null, 2)}</pre>
+                    <p class="info">Hotel ID (userId): ${payload.userId}</p>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = '<p class="error">❌ Invalid token format</p>';
+            }
+        }
+
+        async function testOrdersAPI() {
+            const token = localStorage.getItem('token');
+            const resultDiv = document.getElementById('apiResult');
+            
+            if (!token) {
+                resultDiv.innerHTML = '<p class="error">❌ No token! Check Step 1 first.</p>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<p class="info">⏳ Fetching orders...</p>';
+
+            try {
+                const response = await fetch('/api/orders', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    cache: 'no-cache'
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    resultDiv.innerHTML = `
+                        <p class="error">❌ API Error: ${response.status}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                    return;
+                }
+
+                const orders = data.orders || [];
+                const openOrders = orders.filter(o => o.status === 'OPEN');
+
+                resultDiv.innerHTML = `
+                    <p class="success">✅ API Response received!</p>
+                    <p><strong>Total orders:</strong> ${orders.length}</p>
+                    <p><strong>OPEN orders:</strong> ${openOrders.length}</p>
+                    <pre>${JSON.stringify(data, null, 2)}</pre>
+                    ${openOrders.length > 0 ? `
+                        <p class="success">✅ BUSY Tables: ${openOrders.map(o => o.table_number).join(', ')}</p>
+                    ` : `
+                        <p class="error">❌ No OPEN orders found for this hotel!</p>
+                        <p>This means you're logged in with a different hotel account.</p>
+                    `}
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <p class="error">❌ Error: ${error.message}</p>
+                `;
+            }
+        }
+    </script>
+</body>
+</html>

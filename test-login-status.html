@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Status Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .info-box {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .error-box {
+            background: #ffebee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        .warning-box {
+            background: #fff3e0;
+            border-left: 4px solid #ff9800;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        .logout-btn {
+            background: #f44336;
+        }
+        .logout-btn:hover {
+            background: #da190b;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .label {
+            font-weight: bold;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Login Status Checker</h1>
+        
+        <div id="loading" class="info-box">
+            <p>⏳ Checking your login status...</p>
+        </div>
+
+        <div id="result" style="display: none;"></div>
+
+        <div style="margin-top: 20px;">
+            <button onclick="checkStatus()">🔄 Refresh Status</button>
+            <button onclick="window.location.href='http://localhost:8000/dashboard'" class="info-btn">📊 Go to Dashboard</button>
+            <button onclick="logout()" class="logout-btn">🚪 Logout</button>
+        </div>
+    </div>
+
+    <script>
+        async function checkStatus() {
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            
+            loading.style.display = 'block';
+            result.style.display = 'none';
+
+            try {
+                const token = localStorage.getItem('auth_token');
+                
+                if (!token) {
+                    result.innerHTML = `
+                        <div class="error-box">
+                            <h3>❌ Not Logged In</h3>
+                            <p>No authentication token found in localStorage.</p>
+                            <p><a href="http://localhost:8000/login">Click here to login</a></p>
+                        </div>
+                    `;
+                    loading.style.display = 'none';
+                    result.style.display = 'block';
+                    return;
+                }
+
+                const response = await fetch('http://localhost:8000/api/debug/current-user', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    const hasOrders = data.openOrders > 0;
+                    result.innerHTML = `
+                        <div class="info-box">
+                            <h3>✅ Logged In Successfully</h3>
+                            <p><span class="label">Hotel Name:</span> ${data.currentUser.hotelName}</p>
+                            <p><span class="label">Email:</span> ${data.currentUser.email}</p>
+                            <p><span class="label">Hotel ID:</span> ${data.currentUser.id}</p>
+                            <p><span class="label">Table Count:</span> ${data.currentUser.tableCount}</p>
+                            <p><span class="label">Open Orders:</span> ${data.openOrders}</p>
+                        </div>
+
+                        ${hasOrders ? `
+                            <div class="info-box">
+                                <h3>🔴 Expected Dashboard Behavior</h3>
+                                <p>You have <strong>${data.openOrders}</strong> open order(s).</p>
+                                <p>Some tables should show as <strong style="color: red;">BUSY (RED)</strong> on your dashboard.</p>
+                                <p>If all tables show as GREEN, please refresh the dashboard page.</p>
+                            </div>
+                        ` : `
+                            <div class="warning-box">
+                                <h3>🟢 No Open Orders</h3>
+                                <p>You currently have no open orders.</p>
+                                <p>All tables will show as <strong style="color: green;">FREE (GREEN)</strong> on your dashboard.</p>
+                                <p>To test the BUSY status:</p>
+                                <ol>
+                                    <li>Go to the Orders page</li>
+                                    <li>Select a table</li>
+                                    <li>Add menu items and save the order</li>
+                                    <li>Return to dashboard - that table will show as BUSY</li>
+                                </ol>
+                            </div>
+                        `}
+
+                        <div style="margin-top: 20px;">
+                            <h4>Token Information:</h4>
+                            <pre>${JSON.stringify(data.tokenInfo, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    result.innerHTML = `
+                        <div class="error-box">
+                            <h3>❌ Error</h3>
+                            <p>${data.error || 'Failed to get user info'}</p>
+                            <p><a href="http://localhost:8000/login">Click here to login again</a></p>
+                        </div>
+                    `;
+                }
+
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error-box">
+                        <h3>❌ Connection Error</h3>
+                        <p>Failed to connect to the server: ${error.message}</p>
+                        <p>Make sure the server is running at http://localhost:8000</p>
+                    </div>
+                `;
+            }
+
+            loading.style.display = 'none';
+            result.style.display = 'block';
+        }
+
+        function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('token');
+                alert('Logged out successfully!');
+                checkStatus();
+            }
+        }
+
+        // Check status on page load
+        checkStatus();
+    </script>
+</body>
+</html>

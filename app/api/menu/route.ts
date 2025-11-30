@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(
-      { items },
+      { menuItems: items },
       { 
         status: 200,
         headers: {

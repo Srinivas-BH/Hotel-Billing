@@ -111,11 +111,35 @@ export async function DELETE(
       { success: true },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Delete menu item error:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Internal server error';
+    let statusCode = 500;
+    
+    if (error?.message) {
+      errorMessage = error.message;
+      
+      // Handle specific database errors
+      if (error.message.includes('does not exist') || error.message.includes('relation')) {
+        errorMessage = 'Database table not found. Please run migrations.';
+        statusCode = 503;
+      } else if (error.message.includes('connection') || error.message.includes('timeout')) {
+        errorMessage = 'Database connection failed. Please check your database configuration.';
+        statusCode = 503;
+      } else if (error.message.includes('foreign key') || error.message.includes('constraint')) {
+        errorMessage = 'Cannot delete menu item: it is being used in existing orders or invoices.';
+        statusCode = 409;
+      }
+    }
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { 
+        error: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      },
+      { status: statusCode }
     );
   }
 }

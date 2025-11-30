@@ -1,5 +1,9 @@
 -- Hotel Billing Admin Database Schema
 -- Copy and paste this ENTIRE file into Supabase SQL Editor
+--
+-- NOTE: For Order Taking & Billing feature, additional migrations are required.
+-- After running this base schema, execute migrations in the /migrations directory.
+-- See migrations/README.md for details.
 
 -- Create hotels table
 CREATE TABLE IF NOT EXISTS hotels (

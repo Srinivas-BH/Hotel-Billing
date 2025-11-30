@@ -15,6 +15,7 @@ export default function MenuPage() {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [success, setSuccess] = useState<string>('');
   const [showForm, setShowForm] = useState(false);
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const { token } = useAuth();
@@ -37,7 +38,8 @@ export default function MenuPage() {
       }
 
       const data = await response.json();
-      setItems(data.items || []);
+      // API returns menuItems, but also check for items for backward compatibility
+      setItems(data.menuItems || data.items || []);
     } catch (err) {
       setError('Failed to load menu items');
       console.error(err);
@@ -53,6 +55,11 @@ export default function MenuPage() {
 
   const handleDelete = async (id: string) => {
     try {
+      if (!token) {
+        setError('Authentication required. Please log in again.');
+        return;
+      }
+
       const response = await fetch(`/api/menu/${id}`, {
         method: 'DELETE',
         headers: {
@@ -61,13 +68,37 @@ export default function MenuPage() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to delete item');
+        // Try to get error message from response
+        let errorMessage = 'Failed to delete item';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
+      // Successfully deleted - remove from local state
       setItems(items.filter((item) => item.id !== id));
-    } catch (err) {
-      setError('Failed to delete item');
-      console.error(err);
+      setError(''); // Clear any previous errors
+      setSuccess('Menu item deleted successfully');
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => {
+        setSuccess('');
+      }, 3000);
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to delete item';
+      setError(errorMessage);
+      setSuccess(''); // Clear success message on error
+      console.error('Delete error:', err);
+      
+      // Clear error message after 5 seconds
+      setTimeout(() => {
+        setError('');
+      }, 5000);
     }
   };
 
@@ -106,6 +137,12 @@ export default function MenuPage() {
           {error && (
             <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-red-800">{error}</p>
+            </div>
+          )}
+
+          {success && (
+            <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-green-800">{success}</p>
             </div>
           )}
 

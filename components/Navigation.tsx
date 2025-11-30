@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Home, FileText, DollarSign, BarChart3, User, LogOut } from 'lucide-react';
+import { Menu, X, Home, FileText, DollarSign, BarChart3, User, LogOut, ShoppingCart } from 'lucide-react';
 
 export function Navigation() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -20,7 +20,7 @@ export function Navigation() {
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/menu', label: 'Menu', icon: FileText },
-    { href: '/billing', label: 'Billing', icon: DollarSign },
+    { href: '/orders', label: 'Order Taking', icon: ShoppingCart },
     { href: '/reports', label: 'Reports', icon: BarChart3 },
     { href: '/profile', label: 'Profile', icon: User },
   ];

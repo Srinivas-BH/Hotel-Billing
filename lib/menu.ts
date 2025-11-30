@@ -204,7 +204,7 @@ export async function deleteMenuItem(
     );
 
     return result.rowCount !== null && result.rowCount > 0;
-  } catch (error) {
+  } catch (error: any) {
     // Development mode fallback
     if (process.env.NODE_ENV === 'development' && !process.env.DATABASE_URL) {
       console.warn('Database not configured - deleting from mock data');
@@ -214,6 +214,16 @@ export async function deleteMenuItem(
         return true;
       }
       return false;
+    }
+    
+    // Re-throw with more context
+    const errorMessage = error?.message || 'Unknown database error';
+    if (errorMessage.includes('does not exist') || errorMessage.includes('relation')) {
+      throw new Error('Database table not found. Please run migrations.');
+    } else if (errorMessage.includes('foreign key') || errorMessage.includes('constraint')) {
+      throw new Error('Cannot delete menu item: it is being used in existing orders or invoices.');
+    } else if (errorMessage.includes('connection') || errorMessage.includes('timeout')) {
+      throw new Error('Database connection failed. Please check your database configuration.');
     }
     
     throw error;
